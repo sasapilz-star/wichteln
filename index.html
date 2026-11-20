@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firmen-Wichteln</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1a14; --card:#17261d; --card2:#1e3126; --line:#2b4535;
+    --text:#f3efe4; --muted:#a8b8ad; --accent:#e4553f; --accent2:#f2b33d;
+    --green:#25d366; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;background:
+    radial-gradient(900px 500px at 10% -10%, rgba(228,85,63,.18), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(242,179,61,.14), transparent 60%),
+    var(--bg)}
+  .wrap{max-width:560px;margin:0 auto;padding:28px 18px 60px}
+  h1{font-family:Fraunces,Georgia,serif;font-weight:800;font-size:2rem;line-height:1.1;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.25rem;margin:0 0 10px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:.98rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:0 0 6px;font-weight:500}
+  textarea,input{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;font-size:1rem;outline:none}
+  textarea:focus,input:focus{border-color:var(--accent2)}
+  textarea{min-height:150px;resize:vertical;line-height:1.5}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .hint{font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.45}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:600;font-size:1rem;cursor:pointer;text-decoration:none;transition:transform .08s ease,filter .15s}
+  .btn:active{transform:scale(.985)}
+  .primary{background:var(--accent);color:#fff;margin-top:14px}
+  .primary:hover{filter:brightness(1.08)}
+  .ghost{background:transparent;color:var(--muted);border:1px solid var(--line);margin-top:10px}
+  .wa{background:var(--green);color:#06230f;padding:11px 14px;width:auto;font-size:.95rem}
+  .wa svg{width:18px;height:18px}
+  .person{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .person:first-of-type{border-top:0}
+  .person .name{font-weight:600;font-size:1.05rem}
+  .person .state{font-size:.78rem;color:var(--muted);margin-top:2px}
+  .sent .state{color:var(--green)}
+  .err{color:#ff9b8b;font-size:.9rem;margin-top:10px}
+  .steps{margin:0;padding-left:18px;color:var(--muted);font-size:.92rem;line-height:1.6}
+  .steps li{margin:4px 0}
+  .pill{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.8rem;color:var(--muted);margin:0 6px 6px 0}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#fff;color:#111;padding:10px 16px;border-radius:999px;font-weight:600;font-size:.9rem;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* Reveal */
+  .reveal{text-align:center;padding-top:30px}
+  .gift{width:120px;height:120px;margin:10px auto 18px;border-radius:28px;background:linear-gradient(145deg,var(--accent),#b83a2a);display:flex;align-items:center;justify-content:center;font-size:58px;box-shadow:0 20px 50px rgba(228,85,63,.35);cursor:pointer;user-select:none;transition:transform .15s}
+  .gift:hover{transform:translateY(-3px) rotate(-2deg)}
+  .gift.shake{animation:shake .5s}
+  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}75%{transform:rotate(-3deg)}}
+  .target{font-family:Fraunces,Georgia,serif;font-weight:800;font-size:2.6rem;letter-spacing:-.02em;margin:10px 0 4px;color:var(--accent2);opacity:0;transform:scale(.8);transition:.5s cubic-bezier(.2,1.4,.4,1)}
+  .target.in{opacity:1;transform:scale(1)}
+  .hidden{display:none}
+  .meta{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:18px}
+  .small{font-size:.85rem;color:var(--muted);margin-top:28px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ORGANISATOR -->
+  <section id="org">
+    <h1>🎄 Firmen-Wichteln</h1>
+    <p class="sub">Namen eintragen, verlosen, per WhatsApp verschicken. Die anderen tippen nur auf einen Link.</p>
+
+    <div class="card">
+      <label for="names">Wer macht mit? (ein Name pro Zeile)</label>
+      <textarea id="names" placeholder="Anna&#10;Max&#10;Lena&#10;Tom"></textarea>
+      <div class="row">
+        <div><label for="budget">Budget (optional)</label><input id="budget" placeholder="z. B. 15 €"></div>
+        <div><label for="date">Übergabe (optional)</label><input id="date" placeholder="z. B. 19. Dez."></div>
+      </div>
+      <label for="note" style="margin-top:12px">Zusatz (optional)</label>
+      <input id="note" placeholder="z. B. Weihnachtsfeier im Besprechungsraum">
+      <button class="btn primary" id="draw">🎲 Jetzt verlosen</button>
+      <div class="err hidden" id="err"></div>
+      <p class="hint">Die Auslosung passiert nur hier im Browser. Niemand beschenkt sich selbst. Die Namen in den Links sind verschlüsselt – auch du siehst nicht, wer wen gezogen hat.</p>
+    </div>
+
+    <div id="result" class="hidden">
+      <div class="card">
+        <h2>Lose verschicken</h2>
+        <p class="hint" style="margin:0 0 10px">Tipp auf einen Button, wähl im WhatsApp die Person aus, abschicken. Fertig. Dein eigenes Los schickst du dir einfach selbst.</p>
+        <div id="people"></div>
+      </div>
+
+      <div class="card">
+        <h2>Oder: alles in die Gruppe</h2>
+        <p class="hint" style="margin:0 0 12px">Eine Nachricht mit allen Links in den Firmen-Chat. Jede Person öffnet nur ihren eigenen Link – die anderen Links verraten nichts.</p>
+        <a class="btn wa" id="groupLink" href="#" style="width:100%">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.6c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.2-.3-.3-.6-.4zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>
+          Gruppennachricht in WhatsApp öffnen
+        </a>
+        <button class="btn ghost" id="copyGroup">Text stattdessen kopieren</button>
+      </div>
+
+      <button class="btn ghost" id="reset">Neu verlosen</button>
+    </div>
+  </section>
+
+  <!-- TEILNEHMER -->
+  <section id="reveal" class="reveal hidden">
+    <h1>🎄 Dein Wichtel-Los</h1>
+    <p class="sub" id="hello">Hallo! Tipp auf das Geschenk, um zu sehen, wen du beschenkst.</p>
+    <div class="gift" id="gift">🎁</div>
+    <div class="target" id="target"></div>
+    <p class="sub hidden" id="after">Psst – bleibt unter uns. 🤫</p>
+    <div class="meta" id="meta"></div>
+    <p class="small">Du kannst diese Seite jederzeit wieder öffnen, falls du es vergisst.</p>
+  </section>
+
+  <section id="broken" class="reveal hidden">
+    <h1>Hm, der Link ist kaputt</h1>
+    <p class="sub">Bitte den Organisator, dir den Link noch einmal zu schicken.</p>
+  </section>
+
+</div>
+<div class="toast" id="toast">Kopiert ✓</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const KEY = 'wichteln-v1';
+
+  // ---------- encoding (obfuscated base64url; letters/digits/-/_ only) ----------
+  const SALT = 'w1chT3ln';
+  function b64url(bytes){
+    let s = btoa(String.fromCharCode(...bytes));
+    return s.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function unb64url(s){
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while (s.length % 4) s += '=';
+    const bin = atob(s); const out = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+    return out;
+  }
+  function xor(bytes){
+    const k = new TextEncoder().encode(SALT);
+    return bytes.map((b,i)=> b ^ k[i % k.length]);
+  }
+  function encode(obj){
+    const bytes = new TextEncoder().encode(JSON.stringify(obj));
+    return 'L' + b64url(xor(bytes));
+  }
+  function decode(str){
+    if (!str || str[0] !== 'L') return null;
+    try { return JSON.parse(new TextDecoder().decode(xor(unb64url(str.slice(1))))); }
+    catch(e){ return null; }
+  }
+
+  // ---------- routing ----------
+  const hash = location.hash.replace(/^#/,'');
+  const baseUrl = location.origin + location.pathname;
+  if (hash) {
+    const data = decode(hash);
+    if (data && data.f && data.t) showReveal(data); else $('#broken').classList.remove('hidden');
+  } else {
+    $('#org').classList.remove('hidden');
+    initOrganizer();
+  }
+
+  // ---------- participant view ----------
+  function showReveal(d){
+    $('#reveal').classList.remove('hidden');
+    $('#hello').textContent = `Hallo ${d.f}! Tipp auf das Geschenk, um zu sehen, wen du beschenkst.`;
+    const meta = $('#meta');
+    if (d.b) meta.insertAdjacentHTML('beforeend', `<span class="pill">💶 Budget: ${esc(d.b)}</span>`);
+    if (d.d) meta.insertAdjacentHTML('beforeend', `<span class="pill">📅 Übergabe: ${esc(d.d)}</span>`);
+    if (d.n) meta.insertAdjacentHTML('beforeend', `<span class="pill">📝 ${esc(d.n)}</span>`);
+    const gift = $('#gift');
+    gift.addEventListener('click', () => {
+      gift.classList.add('shake');
+      setTimeout(()=>{
+        gift.textContent = '🎉';
+        $('#target').textContent = d.t;
+        $('#target').classList.add('in');
+        $('#hello').textContent = `${d.f}, du beschenkst …`;
+        $('#after').classList.remove('hidden');
+      }, 450);
+    }, {once:true});
+  }
+
+  // ---------- organizer view ----------
+  function initOrganizer(){
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){}
+    if (saved && saved.pairs) {
+      $('#names').value = saved.names.join('\n');
+      $('#budget').value = saved.budget || '';
+      $('#date').value = saved.date || '';
+      $('#note').value = saved.note || '';
+      render(saved);
+    }
+
+    $('#draw').addEventListener('click', () => {
+      const names = [...new Set($('#names').value.split('\n').map(s=>s.trim()).filter(Boolean))];
+      const err = $('#err');
+      if (names.length < 3) { err.textContent = 'Mindestens 3 verschiedene Namen bitte.'; err.classList.remove('hidden'); return; }
+      err.classList.add('hidden');
+      const state = {
+        names, pairs: derange(names),
+        budget: $('#budget').value.trim(), date: $('#date').value.trim(), note: $('#note').value.trim(),
+        sent: {}
+      };
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+      render(state);
+      $('#result').scrollIntoView({behavior:'smooth'});
+    });
+
+    $('#reset').addEventListener('click', () => {
+      try { localStorage.removeItem(KEY); } catch(e){}
+      $('#result').classList.add('hidden');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  }
+
+  // random permutation with no fixed points
+  function derange(arr){
+    const n = arr.length;
+    let idx;
+    do {
+      idx = arr.map((_,i)=>i);
+      for (let i=n-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [idx[i],idx[j]]=[idx[j],idx[i]]; }
+    } while (idx.some((v,i)=>v===i));
+    return arr.map((from,i)=>({from, to: arr[idx[i]]}));
+  }
+
+  function linkFor(state, p){
+    return baseUrl + '#' + encode({f:p.from, t:p.to, b:state.budget, d:state.date, n:state.note});
+  }
+  function msgFor(state, p){
+    let m = `🎄 Hallo ${p.from}! Wir wichteln in der Firma. Dein geheimes Los findest du hier:\n${linkFor(state,p)}`;
+    const extras = [];
+    if (state.budget) extras.push(`Budget: ${state.budget}`);
+    if (state.date) extras.push(`Übergabe: ${state.date}`);
+    if (state.note) extras.push(state.note);
+    if (extras.length) m += `\n\n${extras.join(' · ')}`;
+    return m;
+  }
+  function groupMsg(state){
+    let m = `🎄 Wir wichteln! Jede*r öffnet bitte NUR den eigenen Link – dort steht, wen du beschenkst.\n\n`;
+    m += state.pairs.map(p => `${p.from}: ${linkFor(state,p)}`).join('\n\n');
+    const extras = [];
+    if (state.budget) extras.push(`Budget: ${state.budget}`);
+    if (state.date) extras.push(`Übergabe: ${state.date}`);
+    if (state.note) extras.push(state.note);
+    if (extras.length) m += `\n\n${extras.join(' · ')}`;
+    return m;
+  }
+  const WA = 'https://wa.me/?text=';
+  const waIcon = $('#groupLink svg').outerHTML;
+
+  function render(state){
+    $('#result').classList.remove('hidden');
+    const list = $('#people'); list.innerHTML = '';
+    state.pairs.forEach((p,i) => {
+      const div = document.createElement('div');
+      div.className = 'person' + (state.sent[p.from] ? ' sent' : '');
+      div.innerHTML = `<div><div class="name">${esc(p.from)}</div><div class="state">${state.sent[p.from] ? 'verschickt ✓' : 'noch offen'}</div></div>
+        <a class="btn wa" href="${WA + encodeURIComponent(msgFor(state,p))}" target="_blank" rel="noopener">${waIcon} Senden</a>`;
+      div.querySelector('a').addEventListener('click', () => {
+        state.sent[p.from] = true;
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+        div.classList.add('sent'); div.querySelector('.state').textContent = 'verschickt ✓';
+      });
+      list.appendChild(div);
+    });
+    const g = groupMsg(state);
+    $('#groupLink').href = WA + encodeURIComponent(g);
+    $('#groupLink').target = '_blank';
+    $('#copyGroup').onclick = () => copy(g);
+  }
+
+  function copy(text){
+    const done = () => { const t=$('#toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(()=>fallback(text, done));
+    } else fallback(text, done);
+  }
+  function fallback(text, done){
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e){}
+    document.body.removeChild(ta);
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+})();
+</script>
+</body>
+</html>
