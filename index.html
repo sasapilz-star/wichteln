@@ -153,19 +153,6 @@
     catch(e){ return null; }
   }
 
-  // ---------- routing ----------
-  // a los link opened on this same page only changes the hash: reload so the right view shows
-  window.addEventListener('hashchange', () => location.reload());
-  const hash = location.hash.replace(/^#/,'');
-  const baseUrl = location.origin + location.pathname;
-  if (hash) {
-    const data = decode(hash);
-    if (data && data.f && data.t) showReveal(data); else $('#broken').classList.remove('hidden');
-  } else {
-    $('#org').classList.remove('hidden');
-    initOrganizer();
-  }
-
   // ---------- participant view ----------
   function showReveal(d){
     $('#reveal').classList.remove('hidden');
@@ -291,6 +278,19 @@
     document.body.removeChild(ta);
   }
   function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  // ---------- routing ----------
+  // a los link opened on this same page only changes the hash: reload so the right view shows
+  window.addEventListener('hashchange', () => location.reload());
+  const hash = location.hash.replace(/^#/,'');
+  const baseUrl = location.origin + location.pathname;
+  if (hash) {
+    const data = decode(hash);
+    if (data && data.f && data.t) showReveal(data); else $('#broken').classList.remove('hidden');
+  } else {
+    $('#org').classList.remove('hidden');
+    initOrganizer();
+  }
+
 })();
 </script>
 </body>
