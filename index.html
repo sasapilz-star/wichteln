@@ -24,7 +24,11 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
   label{display:block;font-size:.85rem;color:var(--muted);margin:0 0 6px;font-weight:500}
   textarea,input{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;font-size:1rem;outline:none}
-  textarea:focus,input:focus{border-color:var(--accent2)}
+  textarea:focus,input:focus,select:focus{border-color:var(--accent2)}
+  select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;font-size:1rem;outline:none}
+  .okmsg{background:rgba(242,179,61,.12);border:1px solid rgba(242,179,61,.4);color:var(--text);border-radius:12px;padding:12px 14px;font-size:.9rem;line-height:1.5;margin-top:12px}
+  .changed .state{color:var(--accent2);font-weight:600}
+  .danger{border-color:var(--accent);color:#ff9b8b}
   textarea{min-height:150px;resize:vertical;line-height:1.5}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
   .hint{font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.45}
@@ -70,7 +74,7 @@
     <h1>🎄 Firmen-Wichteln</h1>
     <p class="sub">Namen eintragen, verlosen, per WhatsApp verschicken. Die anderen tippen nur auf einen Link.</p>
 
-    <div class="card">
+    <div class="card" id="setup">
       <label for="names">Wer macht mit? (ein Name pro Zeile)</label>
       <textarea id="names" placeholder="Anna&#10;Max&#10;Lena&#10;Tom"></textarea>
       <div class="row">
@@ -89,6 +93,18 @@
         <h2>Lose verschicken</h2>
         <p class="hint" style="margin:0 0 10px">Tipp auf einen Button, wähl im WhatsApp die Person aus, abschicken. Fertig. Dein eigenes Los schickst du dir einfach selbst.</p>
         <div id="people"></div>
+      </div>
+
+      <div class="card">
+        <h2>Nachzügler hinzufügen</h2>
+        <p class="hint" style="margin:0 0 12px">Die Verlosung bleibt bestehen. Die neuen Personen werden bei <b>einer</b> bestehenden Person eingefügt – nur deren Los ändert sich, alle anderen behalten ihres.</p>
+        <label for="addNames">Neue Namen (ein Name pro Zeile)</label>
+        <textarea id="addNames" style="min-height:80px" placeholder="Paul&#10;Mia"></textarea>
+        <label for="addVia" style="margin-top:12px">Wessen Los darf sich ändern?</label>
+        <select id="addVia"></select>
+        <button class="btn primary" id="addBtn">➕ Hinzufügen</button>
+        <div class="err hidden" id="addErr"></div>
+        <div class="okmsg hidden" id="addOk"></div>
       </div>
 
       <div class="card">
@@ -125,6 +141,7 @@
 (function(){
   const $ = s => document.querySelector(s);
   const KEY = 'wichteln-v1';
+  let current = null;
 
   // ---------- encoding (obfuscated base64url; letters/digits/-/_ only) ----------
   const SALT = 'w1chT3ln';
@@ -201,10 +218,56 @@
       $('#result').scrollIntoView({behavior:'smooth'});
     });
 
+    // two taps needed, so the existing draw is not lost by accident
+    let armed = false;
     $('#reset').addEventListener('click', () => {
+      const btn = $('#reset');
+      if (!armed) {
+        armed = true;
+        btn.textContent = 'Wirklich? Alle verschickten Lose werden ungültig – nochmal tippen';
+        btn.classList.add('danger');
+        setTimeout(() => { armed = false; btn.textContent = 'Neu verlosen'; btn.classList.remove('danger'); }, 5000);
+        return;
+      }
+      armed = false; btn.textContent = 'Neu verlosen'; btn.classList.remove('danger');
       try { localStorage.removeItem(KEY); } catch(e){}
+      current = null;
       $('#result').classList.add('hidden');
+      $('#setup').classList.remove('hidden');
       window.scrollTo({top:0,behavior:'smooth'});
+    });
+
+    $('#addBtn').addEventListener('click', () => {
+      const state = current; if (!state) return;
+      const err = $('#addErr'), ok = $('#addOk');
+      err.classList.add('hidden'); ok.classList.add('hidden');
+      const raw = [...new Set($('#addNames').value.split('\n').map(s=>s.trim()).filter(Boolean))];
+      const lower = state.names.map(n => n.toLowerCase());
+      const dup = raw.filter(n => lower.includes(n.toLowerCase()));
+      if (!raw.length) { err.textContent = 'Bitte mindestens einen Namen eintragen.'; err.classList.remove('hidden'); return; }
+      if (dup.length) { err.textContent = `Schon dabei: ${dup.join(', ')}. Bitte einen anderen Namen (z. B. mit Nachname).`; err.classList.remove('hidden'); return; }
+
+      const via = $('#addVia').value;
+      const idx = via ? state.pairs.findIndex(p => p.from === via) : Math.floor(Math.random() * state.pairs.length);
+      const giver = state.pairs[idx];
+      const oldTarget = giver.to;
+      const chain = raw.slice();
+      for (let i=chain.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [chain[i],chain[j]]=[chain[j],chain[i]]; }
+      // giver -> new1 -> new2 -> ... -> oldTarget
+      giver.to = chain[0];
+      const added = chain.map((n,i) => ({from:n, to: i < chain.length-1 ? chain[i+1] : oldTarget}));
+      state.pairs.splice(idx+1, 0, ...added);
+      state.names = state.names.concat(raw);
+      state.changed[giver.from] = true;
+      delete state.sent[giver.from];
+      raw.forEach(n => { delete state.sent[n]; });
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+      $('#addNames').value = '';
+      render(state);
+      const others = raw.length === 1 ? raw[0] : raw.slice(0,-1).join(', ') + ' und ' + raw[raw.length-1];
+      ok.innerHTML = `Erledigt. Bitte jetzt <b>${raw.length + 1} Lose</b> schicken: an <b>${esc(others)}</b> und ein neues an <b>${esc(giver.from)}</b>. Die Nachricht an ${esc(giver.from)} sagt dazu, dass der alte Link nicht mehr gilt. Alle anderen müssen nichts tun.`;
+      ok.classList.remove('hidden');
+      $('#people').scrollIntoView({behavior:'smooth'});
     });
   }
 
@@ -223,7 +286,9 @@
     return baseUrl + '#' + encode({f:p.from, t:p.to, b:state.budget, d:state.date, n:state.note});
   }
   function msgFor(state, p){
-    let m = `🎄 Hallo ${p.from}! Wir wichteln in der Firma. Dein geheimes Los findest du hier:\n${linkFor(state,p)}`;
+    let m = state.changed[p.from]
+      ? `🎄 Hallo ${p.from}! Beim Wichteln sind noch Leute dazugekommen, deshalb hat sich dein Los geändert. Bitte nur diesen NEUEN Link verwenden – der alte gilt nicht mehr:\n${linkFor(state,p)}`
+      : `🎄 Hallo ${p.from}! Wir wichteln in der Firma. Dein geheimes Los findest du hier:\n${linkFor(state,p)}`;
     const extras = [];
     if (state.budget) extras.push(`Budget: ${state.budget}`);
     if (state.date) extras.push(`Übergabe: ${state.date}`);
@@ -244,21 +309,35 @@
   const WA = 'https://wa.me/?text=';
   const waIcon = $('#groupLink svg').outerHTML;
 
+  function stateLabel(state, name){
+    const ch = state.changed[name], s = state.sent[name];
+    if (ch) return s ? 'neues Los verschickt ✓' : '⚠ Los geändert – bitte neu schicken';
+    return s ? 'verschickt ✓' : 'noch offen';
+  }
   function render(state){
+    state.sent = state.sent || {};
+    state.changed = state.changed || {};
+    current = state;
+    $('#setup').classList.add('hidden');
     $('#result').classList.remove('hidden');
     const list = $('#people'); list.innerHTML = '';
     state.pairs.forEach((p,i) => {
       const div = document.createElement('div');
-      div.className = 'person' + (state.sent[p.from] ? ' sent' : '');
-      div.innerHTML = `<div><div class="name">${esc(p.from)}</div><div class="state">${state.sent[p.from] ? 'verschickt ✓' : 'noch offen'}</div></div>
+      const cls = state.sent[p.from] ? ' sent' : (state.changed[p.from] ? ' changed' : '');
+      div.className = 'person' + cls;
+      div.innerHTML = `<div><div class="name">${esc(p.from)}</div><div class="state">${stateLabel(state, p.from)}</div></div>
         <a class="btn wa" href="${WA + encodeURIComponent(msgFor(state,p))}" target="_blank" rel="noopener">${waIcon} Senden</a>`;
       div.querySelector('a').addEventListener('click', () => {
         state.sent[p.from] = true;
         try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
-        div.classList.add('sent'); div.querySelector('.state').textContent = 'verschickt ✓';
+        div.classList.remove('changed'); div.classList.add('sent');
+        div.querySelector('.state').textContent = stateLabel(state, p.from);
       });
       list.appendChild(div);
     });
+    const sel = $('#addVia');
+    sel.innerHTML = '<option value="">Zufällig (empfohlen)</option>' +
+      state.pairs.map(p => `<option value="${esc(p.from)}">${esc(p.from)}</option>`).join('');
     const g = groupMsg(state);
     $('#groupLink').href = WA + encodeURIComponent(g);
     $('#groupLink').target = '_blank';
